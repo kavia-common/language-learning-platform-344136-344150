@@ -126,6 +126,40 @@ def health_check_db() -> Dict[str, Any]:
 
 
 @app.get(
+    "/health/smoke",
+    tags=["Health"],
+    summary="End-to-end smoke check",
+    description="Verifies API is up, DB is reachable, and key tables exist (users/lessons).",
+    operation_id="smoke_check",
+)
+def smoke_check() -> Dict[str, Any]:
+    """End-to-end smoke check for preview deployments."""
+    db_ok = db_healthcheck().get("ok", False)
+    tables_ok = False
+    lesson_count: Optional[int] = None
+    try:
+        db = get_db()
+        with db.cursor() as cur:
+            cur.execute(
+                """
+                SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name='users') AS has_users,
+                       EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name='lessons') AS has_lessons
+                """
+            )
+            row = cur.fetchone() or {}
+            tables_ok = bool(row.get("has_users")) and bool(row.get("has_lessons"))
+            if tables_ok:
+                cur.execute("SELECT COUNT(*)::int AS cnt FROM lessons")
+                c = cur.fetchone() or {}
+                lesson_count = int(c.get("cnt") or 0)
+    except Exception:
+        # Keep endpoint stable; report failure via booleans.
+        tables_ok = False
+
+    return {"ok": bool(db_ok and tables_ok), "db_ok": bool(db_ok), "tables_ok": bool(tables_ok), "lesson_count": lesson_count}
+
+
+@app.get(
     "/docs/ws",
     tags=["Realtime"],
     summary="WebSocket usage help",

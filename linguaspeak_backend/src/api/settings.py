@@ -28,26 +28,16 @@ def _read_db_url_from_db_connection_txt() -> Optional[str]:
     raw = candidate.read_text(encoding="utf-8").strip()
     # Expected format: `psql postgresql://user:pass@host:port/db`
     if "postgresql://" in raw:
-        return raw.split("postgresql://", 1)[1].strip().join(["postgresql://"])  # type: ignore[attr-defined]
+        # NOTE: Keep parsing simple and robust; return substring starting at scheme.
+        idx = raw.find("postgresql://")
+        return raw[idx:].strip()
     return None
 
 
 def _read_db_url_from_db_connection_txt_safe() -> Optional[str]:
     """Small wrapper to avoid any unexpected exceptions at import time."""
     try:
-        # The join trick above is too clever; keep robust parsing here.
-        here = Path(__file__).resolve()
-        backend_root = here.parents[2]
-        workspace_root = backend_root.parents[0]
-        codegen_root = workspace_root.parents[1]
-        candidate = codegen_root / "language-learning-platform-344136-344151" / "linguaspeak_database" / "db_connection.txt"
-        if not candidate.exists():
-            return None
-        raw = candidate.read_text(encoding="utf-8").strip()
-        idx = raw.find("postgresql://")
-        if idx == -1:
-            return None
-        return raw[idx:].strip()
+        return _read_db_url_from_db_connection_txt()
     except Exception:
         return None
 
