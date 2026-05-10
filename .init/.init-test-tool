@@ -1,0 +1,4 @@
+{
+    "command": "pytest",
+    "working_directory": "/home/kavia/workspace/code-generation/language-learning-platform-344136-344150/linguaspeak_backend"
+}
